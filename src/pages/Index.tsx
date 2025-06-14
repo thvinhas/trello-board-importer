@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -500,7 +501,7 @@ const Index = () => {
                   <Button 
                     onClick={loadSample}
                     size="sm"
-                    className="flex items-center gap-2 bg-blue-500 text-white hover:bg-blue-600"
+                    className="flex items-center gap-2 bg-red-500 text-white hover:bg-red-600"
                   >
                     <Upload className="h-4 w-4" />
                     Carregar Exemplo
