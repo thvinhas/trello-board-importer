@@ -1,24 +1,70 @@
+
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>trello-board-importer</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importador JSON para Trello</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📋 Importador JSON para Trello</h1>
+            <p>Converta seus dados JSON para o formato do Trello facilmente</p>
+        </header>
 
-    <meta property="og:title" content="trello-board-importer" />
-    <meta property="og:description" content="Lovable Generated Project" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+        <main class="main">
+            <!-- Seção de Input -->
+            <section class="input-section">
+                <h2>📥 Cole seu JSON aqui</h2>
+                <div class="input-group">
+                    <textarea 
+                        id="jsonInput" 
+                        placeholder='{"board": {"name": "Meu Board", "lists": [...]}}'
+                        rows="10"
+                    ></textarea>
+                    <div class="button-group">
+                        <button id="loadSample" class="btn btn-red">
+                            📤 Carregar Exemplo
+                        </button>
+                        <button id="validateJson" class="btn btn-blue">
+                            ✅ Validar JSON
+                        </button>
+                    </div>
+                </div>
+                <div id="validationMessage" class="message"></div>
+            </section>
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-  </head>
+            <!-- Seção de Preview -->
+            <section class="preview-section">
+                <h2>👀 Pré-visualização</h2>
+                <div id="previewContent" class="preview-content">
+                    <p class="empty-state">Cole um JSON válido para ver a pré-visualização</p>
+                </div>
+            </section>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+            <!-- Seção de Output -->
+            <section class="output-section">
+                <h2>📤 Formato Trello</h2>
+                <div class="output-group">
+                    <textarea 
+                        id="trelloOutput" 
+                        placeholder="O formato do Trello aparecerá aqui..."
+                        rows="15"
+                        readonly
+                    ></textarea>
+                    <button id="copyOutput" class="btn btn-green" disabled>
+                        📋 Copiar Resultado
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast de notificação -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
