@@ -1,11 +1,12 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Upload, CheckCircle, AlertCircle, Download } from "lucide-react";
+import { Copy, Upload, CheckCircle, AlertCircle, Download, Key, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface TrelloCard {
@@ -27,6 +28,9 @@ const Index = () => {
   const [parsedBoard, setParsedBoard] = useState<TrelloBoard | null>(null);
   const [isValidJson, setIsValidJson] = useState(true);
   const [trelloApiFormat, setTrelloApiFormat] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [token, setToken] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   const sampleJson = `{
@@ -102,6 +106,117 @@ const Index = () => {
     setTrelloApiFormat(JSON.stringify(apiFormat, null, 2));
   };
 
+  const createTrelloBoard = async () => {
+    if (!apiKey || !token) {
+      toast({
+        title: "Credenciais necessárias",
+        description: "Por favor, insira sua API Key e Token do Trello.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!parsedBoard) {
+      toast({
+        title: "JSON necessário",
+        description: "Por favor, insira um JSON válido primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      // Criar o board
+      const boardResponse = await fetch(`https://api.trello.com/1/boards/?key=${apiKey}&token=${token}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: parsedBoard.name,
+          desc: `Board importado automaticamente - ${new Date().toLocaleDateString()}`,
+          defaultLists: false,
+          prefs_permissionLevel: 'private'
+        })
+      });
+
+      if (!boardResponse.ok) {
+        throw new Error('Erro ao criar board no Trello');
+      }
+
+      const board = await boardResponse.json();
+      console.log('Board criado:', board);
+
+      // Criar as listas
+      for (let i = 0; i < parsedBoard.lists.length; i++) {
+        const list = parsedBoard.lists[i];
+        
+        const listResponse = await fetch(`https://api.trello.com/1/lists?key=${apiKey}&token=${token}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: list.name,
+            idBoard: board.id,
+            pos: i + 1
+          })
+        });
+
+        if (!listResponse.ok) {
+          throw new Error(`Erro ao criar lista: ${list.name}`);
+        }
+
+        const createdList = await listResponse.json();
+        console.log('Lista criada:', createdList);
+
+        // Criar os cards da lista
+        for (let j = 0; j < list.cards.length; j++) {
+          const card = list.cards[j];
+          
+          const cardResponse = await fetch(`https://api.trello.com/1/cards?key=${apiKey}&token=${token}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: card.name,
+              idList: createdList.id,
+              pos: j + 1
+            })
+          });
+
+          if (!cardResponse.ok) {
+            throw new Error(`Erro ao criar card: ${card.name}`);
+          }
+
+          const createdCard = await cardResponse.json();
+          console.log('Card criado:', createdCard);
+        }
+      }
+
+      toast({
+        title: "Board criado com sucesso!",
+        description: `O board "${parsedBoard.name}" foi criado no seu Trello.`,
+      });
+
+      // Abrir o board no Trello
+      window.open(board.url, '_blank');
+
+    } catch (error) {
+      console.error('Erro ao criar board:', error);
+      toast({
+        title: "Erro ao criar board",
+        description: error instanceof Error ? error.message : "Erro desconhecido ao criar o board no Trello.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const loadSample = () => {
     setJsonInput(sampleJson);
     handleJsonChange(sampleJson);
@@ -157,6 +272,60 @@ const Index = () => {
           </p>
         </div>
 
+        {/* Trello Credentials */}
+        <Card className="mb-6 shadow-lg border-0 bg-white/70 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Credenciais do Trello
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  placeholder="Cole sua API Key aqui..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="token">Token</Label>
+                <Input
+                  id="token"
+                  type="password"
+                  placeholder="Cole seu Token aqui..."
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="text-sm text-gray-600 space-y-2">
+              <p className="font-semibold">Como obter suas credenciais:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>
+                  Acesse{' '}
+                  <a 
+                    href="https://trello.com/app-key" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                  >
+                    trello.com/app-key
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  {' '}para obter sua API Key
+                </li>
+                <li>Na mesma página, clique em "Token" para gerar seu token de acesso</li>
+                <li>Cole ambos nos campos acima</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
           <Card className="shadow-lg border-0 bg-white/70 backdrop-blur-sm">
@@ -202,6 +371,27 @@ const Index = () => {
                     <CheckCircle className="h-4 w-4" />
                     JSON válido! Board "{parsedBoard.name}" detectado.
                   </div>
+                )}
+
+                {/* Create Board Button */}
+                {parsedBoard && (
+                  <Button
+                    onClick={createTrelloBoard}
+                    disabled={isCreating || !apiKey || !token}
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                  >
+                    {isCreating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Criando Board...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Criar Board no Trello
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -324,27 +514,34 @@ const Index = () => {
             <h3 className="text-lg font-semibold mb-3 text-gray-800">
               Como usar este importador
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                  <div className="w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                  <span className="font-medium">Credenciais</span>
+                </div>
+                <p>Obtenha sua API Key e Token do Trello e insira nos campos acima.</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
                   <span className="font-medium">Importar</span>
                 </div>
                 <p>Cole seu JSON na área de texto ou use o exemplo fornecido para testar.</p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                  <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
                   <span className="font-medium">Visualizar</span>
                 </div>
                 <p>Confira a estrutura do board, listas e cards na visualização lateral.</p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
-                  <span className="font-medium">Exportar</span>
+                  <div className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                  <span className="font-medium">Criar</span>
                 </div>
-                <p>Baixe ou copie o JSON formatado para usar com a API do Trello.</p>
+                <p>Clique em "Criar Board no Trello" para importar automaticamente.</p>
               </div>
             </div>
           </CardContent>
