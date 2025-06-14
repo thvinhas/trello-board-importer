@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,8 +129,18 @@ const Index = () => {
     setIsCreating(true);
 
     try {
+      console.log('Iniciando criação do board com:', {
+        boardName: parsedBoard.name,
+        listsCount: parsedBoard.lists.length,
+        apiKeyLength: apiKey.length,
+        tokenLength: token.length
+      });
+
       // Criar o board
-      const boardResponse = await fetch(`https://api.trello.com/1/boards/?key=${apiKey}&token=${token}`, {
+      const boardUrl = `https://api.trello.com/1/boards/?key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}`;
+      console.log('URL da requisição (sem credenciais):', boardUrl.replace(/key=[^&]*/, 'key=***').replace(/token=[^&]*/, 'token=***'));
+      
+      const boardResponse = await fetch(boardUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,18 +153,35 @@ const Index = () => {
         })
       });
 
+      console.log('Status da resposta do board:', boardResponse.status);
+      console.log('Headers da resposta:', Object.fromEntries(boardResponse.headers.entries()));
+
       if (!boardResponse.ok) {
-        throw new Error('Erro ao criar board no Trello');
+        const errorText = await boardResponse.text();
+        console.error('Erro na resposta do board:', errorText);
+        
+        let errorMessage = 'Erro desconhecido ao criar board no Trello';
+        
+        if (boardResponse.status === 401) {
+          errorMessage = 'Credenciais inválidas. Verifique sua API Key e Token do Trello.';
+        } else if (boardResponse.status === 400) {
+          errorMessage = 'Dados inválidos enviados para a API do Trello.';
+        } else if (boardResponse.status === 403) {
+          errorMessage = 'Acesso negado. Verifique as permissões do seu Token.';
+        }
+        
+        throw new Error(`${errorMessage} (Status: ${boardResponse.status}, Detalhes: ${errorText})`);
       }
 
       const board = await boardResponse.json();
-      console.log('Board criado:', board);
+      console.log('Board criado com sucesso:', board);
 
       // Criar as listas
       for (let i = 0; i < parsedBoard.lists.length; i++) {
         const list = parsedBoard.lists[i];
+        console.log(`Criando lista ${i + 1}/${parsedBoard.lists.length}: ${list.name}`);
         
-        const listResponse = await fetch(`https://api.trello.com/1/lists?key=${apiKey}&token=${token}`, {
+        const listResponse = await fetch(`https://api.trello.com/1/lists?key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -166,17 +194,20 @@ const Index = () => {
         });
 
         if (!listResponse.ok) {
-          throw new Error(`Erro ao criar lista: ${list.name}`);
+          const errorText = await listResponse.text();
+          console.error(`Erro ao criar lista "${list.name}":`, errorText);
+          throw new Error(`Erro ao criar lista: ${list.name} (Status: ${listResponse.status})`);
         }
 
         const createdList = await listResponse.json();
-        console.log('Lista criada:', createdList);
+        console.log(`Lista "${list.name}" criada:`, createdList);
 
         // Criar os cards da lista
         for (let j = 0; j < list.cards.length; j++) {
           const card = list.cards[j];
+          console.log(`Criando card ${j + 1}/${list.cards.length} na lista "${list.name}": ${card.name}`);
           
-          const cardResponse = await fetch(`https://api.trello.com/1/cards?key=${apiKey}&token=${token}`, {
+          const cardResponse = await fetch(`https://api.trello.com/1/cards?key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -189,11 +220,13 @@ const Index = () => {
           });
 
           if (!cardResponse.ok) {
-            throw new Error(`Erro ao criar card: ${card.name}`);
+            const errorText = await cardResponse.text();
+            console.error(`Erro ao criar card "${card.name}":`, errorText);
+            throw new Error(`Erro ao criar card: ${card.name} (Status: ${cardResponse.status})`);
           }
 
           const createdCard = await cardResponse.json();
-          console.log('Card criado:', createdCard);
+          console.log(`Card "${card.name}" criado:`, createdCard);
         }
       }
 
@@ -206,7 +239,7 @@ const Index = () => {
       window.open(board.url, '_blank');
 
     } catch (error) {
-      console.error('Erro ao criar board:', error);
+      console.error('Erro detalhado ao criar board:', error);
       toast({
         title: "Erro ao criar board",
         description: error instanceof Error ? error.message : "Erro desconhecido ao criar o board no Trello.",
@@ -322,6 +355,15 @@ const Index = () => {
                 <li>Na mesma página, clique em "Token" para gerar seu token de acesso</li>
                 <li>Cole ambos nos campos acima</li>
               </ol>
+              
+              {/* Debug information */}
+              {apiKey && token && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <strong>Debug Info:</strong> API Key: {apiKey.length} caracteres, Token: {token.length} caracteres
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
