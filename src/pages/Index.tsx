@@ -51,8 +51,32 @@ const Index = () => {
       fetchTrelloUser(savedToken);
     }
 
-    // Verificar se voltamos do OAuth do Trello
+    // Verificar se voltamos do OAuth do Trello (sucesso ou erro)
     const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('trello_success') === 'true') {
+      const token = localStorage.getItem('trello_token');
+      if (token) {
+        setTrelloToken(token);
+        fetchTrelloUser(token);
+      }
+      // Limpar a URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (urlParams.get('trello_error')) {
+      const error = urlParams.get('trello_error');
+      console.error('Erro no OAuth do Trello:', error);
+      toast({
+        title: "Erro no login",
+        description: "Não foi possível completar o login no Trello. Tente novamente.",
+        variant: "destructive",
+      });
+      // Limpar a URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Verificar token direto na URL (fallback)
     const token = urlParams.get('token');
     if (token) {
       setTrelloToken(token);
@@ -96,11 +120,51 @@ const Index = () => {
     const scope = 'read,write';
     const expiration = '30days';
     const name = 'Trello JSON Importer';
-    const returnUrl = window.location.origin + window.location.pathname;
+    
+    // Usar diferentes URLs de retorno dependendo do ambiente
+    let returnUrl;
+    const currentUrl = window.location.origin;
+    
+    if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
+      // Para desenvolvimento local
+      returnUrl = `${currentUrl}/trello-callback`;
+    } else if (currentUrl.includes('lovable.app')) {
+      // Para Lovable
+      returnUrl = `${currentUrl}/trello-callback`;
+    } else {
+      // Para outros domínios
+      returnUrl = `${currentUrl}/trello-callback`;
+    }
+    
+    console.log('Iniciando OAuth do Trello...');
+    console.log('URL de retorno:', returnUrl);
+    console.log('App Key:', TRELLO_APP_KEY);
     
     const authUrl = `https://trello.com/1/authorize?expiration=${expiration}&scope=${scope}&response_type=token&key=${TRELLO_APP_KEY}&return_url=${encodeURIComponent(returnUrl)}&name=${encodeURIComponent(name)}`;
     
-    window.location.href = authUrl;
+    console.log('URL de autorização:', authUrl);
+    
+    // Tentar abrir em popup primeiro
+    const popup = window.open(authUrl, 'trello-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+    
+    if (!popup) {
+      // Se popup foi bloqueado, redirecionar na mesma janela
+      console.log('Popup bloqueado, redirecionando na mesma janela...');
+      window.location.href = authUrl;
+    } else {
+      // Monitorar o popup
+      const checkPopup = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopup);
+          // Verificar se o token foi salvo
+          const token = localStorage.getItem('trello_token');
+          if (token && !trelloToken) {
+            setTrelloToken(token);
+            fetchTrelloUser(token);
+          }
+        }
+      }, 1000);
+    }
   };
 
   const logoutFromTrello = () => {
