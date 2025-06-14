@@ -499,9 +499,8 @@ const Index = () => {
                 <div className="flex gap-2">
                   <Button 
                     onClick={loadSample}
-                    variant="outline"
                     size="sm"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-blue-500 text-white hover:bg-blue-600"
                   >
                     <Upload className="h-4 w-4" />
                     Carregar Exemplo
