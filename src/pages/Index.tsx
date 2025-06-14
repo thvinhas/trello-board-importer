@@ -121,20 +121,8 @@ const Index = () => {
     const expiration = '30days';
     const name = 'Trello JSON Importer';
     
-    // Usar diferentes URLs de retorno dependendo do ambiente
-    let returnUrl;
-    const currentUrl = window.location.origin;
-    
-    if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
-      // Para desenvolvimento local
-      returnUrl = `${currentUrl}/trello-callback`;
-    } else if (currentUrl.includes('lovable.app')) {
-      // Para Lovable
-      returnUrl = `${currentUrl}/trello-callback`;
-    } else {
-      // Para outros domínios
-      returnUrl = `${currentUrl}/trello-callback`;
-    }
+    // Usar a URL específica fornecida pelo usuário
+    const returnUrl = 'https://thvinhas.github.io/trello-board-importer/';
     
     console.log('Iniciando OAuth do Trello...');
     console.log('URL de retorno:', returnUrl);
